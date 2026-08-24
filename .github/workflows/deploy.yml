@@ -53,11 +53,12 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp index.html README.md _site/
+          cp index.html README.md logo-mark.svg _site/
           cp -r design _site/design
           cp -r harness _site/harness
           cp -r app/dist _site/app
           touch _site/.nojekyll
+          test -s _site/logo-mark.svg
           ls -R _site | head -40
 
       - uses: actions/upload-pages-artifact@v3
