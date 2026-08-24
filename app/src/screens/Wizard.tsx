@@ -3,6 +3,7 @@ import { getEngine, type LatencyInfo } from '../audio/engine'
 import type { DeviceInfo, ProcessingCheck } from '../audio/input'
 import { Metronome } from '../audio/metronome'
 import { OnsetTracker } from '../audio/onset'
+import { pairOnsetsToClicks } from '../audio/timing'
 import { iqr, median } from '../audio/stats'
 import { requestPersistentStorage, saveProfile, type CalibrationProfile } from '../audio/storage'
 import { Card, Dot, LevelMeter, StatusRow } from '../ui/components'
@@ -157,6 +158,12 @@ function DeviceStep({ onOpened }: { onOpened: (patch: Partial<WizardData>) => vo
   }
 
   useEffect(() => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(
+        'This browser or context blocks microphone access. Brutzo needs a secure context: use https:// or localhost (during development, http://localhost:5173/app/).',
+      )
+      return
+    }
     void refresh()
     const previous = engine.input.onEvent
     engine.input.onEvent = (event) => {
@@ -175,6 +182,12 @@ function DeviceStep({ onOpened }: { onOpened: (patch: Partial<WizardData>) => vo
 
   const grantAccess = async () => {
     setError(null)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(
+        'Microphone API unavailable. Open Brutzo over https:// or on localhost, in Chrome or Edge.',
+      )
+      return
+    }
     try {
       // Opening the default input once makes device labels readable.
       await engine.openLiveInput(null)
@@ -469,8 +482,14 @@ function TimingStep({
       finished = true
       cancelAnimationFrame(raf)
       stopRef.current = null
-      if (onsets.length >= 4) {
-        const offsets = onsets.slice(0, STRUM_COUNT).map((o, i) => (o.time - clicks[i]) * 1000)
+      // Pair each click with its closest onset (robust to missed strums,
+      // double triggers, and pre-roll noise — see pairOnsetsToClicks).
+      const offsets = pairOnsetsToClicks(
+        onsets.map((o) => o.time),
+        clicks,
+        60 / CAL_BPM / 2,
+      )
+      if (offsets.length >= 4) {
         const med = median(offsets) ?? 0
         const spread = iqr(offsets) ?? 0
         setResult({ offsets, medianMs: med, spreadMs: spread })

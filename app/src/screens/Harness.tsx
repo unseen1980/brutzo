@@ -40,6 +40,7 @@ const MIN_PROBABILITY = 0.6
 export function Harness() {
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
   const [results, setResults] = useState<ClipResult[]>([])
   const [running, setRunning] = useState(false)
   const [sampleRate, setSampleRate] = useState<number | null>(null)
@@ -64,8 +65,15 @@ export function Harness() {
 
   const run = async () => {
     if (!manifest || running) return
+    setRunError(null)
     const engine = getEngine()
-    const ctx = engine.ensureContext()
+    let ctx: AudioContext
+    try {
+      ctx = engine.ensureContext()
+    } catch (e) {
+      setRunError(`Web Audio is unavailable in this browser: ${e instanceof Error ? e.message : String(e)}`)
+      return
+    }
     const graph = engine.audioGraph!
     setSampleRate(ctx.sampleRate)
     setRunning(true)
@@ -161,6 +169,7 @@ export function Harness() {
             Could not load the clip manifest from <code>{CLIPS_URL}/manifest.json</code>: {loadError}
           </div>
         )}
+        {runError && <div className="err-box">{runError}</div>}
         {!loadError && !manifest && (
           <p style={{ color: 'var(--b-color-textMid)' }}>Loading manifest…</p>
         )}
