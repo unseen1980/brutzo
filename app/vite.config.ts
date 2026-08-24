@@ -47,7 +47,11 @@ function serveHarnessInDev(): Plugin {
 }
 
 export default defineConfig({
-  base: '/app/',
+  /**
+   * Relative assets are required: GitHub project Pages serves the app at
+   * /brutzo/app/, while the future custom domain serves it at /app/.
+   */
+  base: './',
   plugins: [react(), serveHarnessInDev()],
   test: {
     environment: 'node',

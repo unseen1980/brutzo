@@ -1,0 +1,20 @@
+import { describe, expect, it } from 'vitest'
+import { harnessClipsUrl, marketingSiteUrl } from './urls'
+
+describe('deployment URLs', () => {
+  it.each([
+    ['https://unseen1980.github.io/brutzo/app/', 'https://unseen1980.github.io/brutzo/harness/clips'],
+    ['https://brutzo.com/app/', 'https://brutzo.com/harness/clips'],
+    ['http://localhost:5173/app/', 'http://localhost:5173/harness/clips'],
+  ])('resolves harness clips from app base %s', (appBase, expected) => {
+    expect(harnessClipsUrl(appBase)).toBe(expected)
+  })
+
+  it.each([
+    ['https://unseen1980.github.io/brutzo/app/', 'https://unseen1980.github.io/brutzo/'],
+    ['https://brutzo.com/app/', 'https://brutzo.com/'],
+    ['http://localhost:5173/app/', 'http://localhost:5173/'],
+  ])('resolves the marketing site from app base %s', (appBase, expected) => {
+    expect(marketingSiteUrl(appBase)).toBe(expected)
+  })
+})

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import type { Route } from '../router'
 import { COLORS } from './tokens'
+import { currentMarketingSiteUrl } from './urls'
 
 export function PageShell({
   route,
@@ -41,7 +42,7 @@ export function PageShell({
               {label}
             </a>
           ))}
-          <a href="/">brutzo.com ↗</a>
+          <a href={currentMarketingSiteUrl()}>brutzo.com ↗</a>
         </nav>
       </header>
       <main className="shell-main">{children}</main>

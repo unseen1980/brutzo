@@ -4,9 +4,10 @@ import { centsBetween } from '../audio/notes'
 import { median } from '../audio/stats'
 import { Card, Dot } from '../ui/components'
 import { COLORS } from '../ui/tokens'
+import { currentHarnessClipsUrl } from '../ui/urls'
 
-/** Served at /harness/clips/ in production; the dev server maps it to repo root. */
-const CLIPS_URL = '/harness/clips'
+/** Served beside /app/ in production; the dev server maps it to repo root. */
+const CLIPS_URL = currentHarnessClipsUrl()
 
 interface ManifestClip {
   file: string
