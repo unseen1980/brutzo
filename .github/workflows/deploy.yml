@@ -30,7 +30,7 @@ jobs:
         run: npm ci
         working-directory: app
 
-      - name: Unit tests (DSP + harness manifest)
+      - name: Unit tests (DSP core + headless clip harness)
         run: npm test
         working-directory: app
 
