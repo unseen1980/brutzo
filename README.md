@@ -5,7 +5,7 @@
 Brutzo is a browser-based guitar app for blues/rock/pop beginners. Its real-time
 assist — *the Ghost* — corrects your pitch and finishes your bends while you play.
 
-## What's in this repo (Phase 0 — Foundation)
+## What's in this repo (Phase 1 — Tone in progress)
 
 - `index.html` — landing page (exported from Claude Design; standalone, loads React + fonts
   from CDN). The waitlist input POSTs to a Formspree endpoint.
@@ -17,6 +17,9 @@ assist — *the Ghost* — corrects your pitch and finishes your bends while you
   - `#/tuner` — YIN pitch detection, big note display, cents needle, six-string indicators,
     accurate down to low E (82.41 Hz)
   - `#/harness` — the reference-clip regression harness (see below)
+  - `#/tone` — opt-in live monitoring through an allocation-free Rust→WASM AudioWorklet:
+    safety HPF, amp drive, tone/cab roll-off, clean/crunch/lead presets, and browser latency estimate
+
 - `harness/` — clip library, expected-pitch manifest, and the clip generator script
 - `.github/workflows/deploy.yml` — builds the app, runs the tests, deploys to Pages
 - `CLAUDE.md` — engineering conventions (audio input rules, design tokens, verification rules)
@@ -32,9 +35,16 @@ Marketing site: open `index.html` in a browser, or:
 
 App (the audio features need Chrome or Edge over HTTPS or localhost):
 
+    rustup target add wasm32-unknown-unknown
     cd app
     npm install
+    npm run dsp:format
+    npm run dsp:test
+    npm test
     npm run dev        # http://localhost:5173/app/
+
+The Tone DSP requires the Rust stable toolchain. `npm run dev` and `npm run build` compile
+its WASM core automatically.
 
 During `npm run dev`, `/harness/clips/*` is served from the repo root, matching production.
 

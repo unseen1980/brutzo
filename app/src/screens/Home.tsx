@@ -21,7 +21,7 @@ export function Home() {
 
   return (
     <>
-      <Card title="Brutzo" sub="Phase 0 — Foundation. The Ghost arrives later; today we earn trust with clean signal.">
+      <Card title="Brutzo" sub="Phase 1 — Tone. The signal path now runs through a real-time Rust→WASM amp core.">
         <p style={{ color: 'var(--b-color-textMid)', marginTop: 0 }}>
           Plug your guitar into your amp's USB out (Katana, Spark, Scarlett…), put on{' '}
           <strong>wired</strong> headphones, and run the setup wizard once. Everything it measures is
@@ -34,13 +34,16 @@ export function Home() {
           <a className="btn secondary" href="#/tuner">
             Open tuner
           </a>
+          <a className="btn secondary" href="#/tone">
+            Open tone lab
+          </a>
           <a className="btn secondary" href="#/harness">
             Reference-clip harness
           </a>
         </p>
       </Card>
 
-      <Card title="What's in Phase 0">
+      <Card title="What's shipping">
         <div className="status-row">
           <span className="status-label">
             <span className="dot ok" />Setup wizard
@@ -61,9 +64,15 @@ export function Home() {
         </div>
         <div className="status-row">
           <span className="status-label">
-            <span className="dot off" />Tone engine · the Ghost · accounts
+            <span className="dot warn" />Tone engine
           </span>
-          <span className="status-value">Phase 1+ — not in this build</span>
+          <span className="status-value">Phase 1 in progress · Rust→WASM AudioWorklet · clean/crunch/lead</span>
+        </div>
+        <div className="status-row">
+          <span className="status-label">
+            <span className="dot off" />The Ghost · accounts
+          </span>
+          <span className="status-value">Phase 2–3 — not in this build</span>
         </div>
       </Card>
 

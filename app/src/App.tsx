@@ -4,12 +4,14 @@ import { PageShell } from './ui/components'
 import { Home } from './screens/Home'
 import { Wizard } from './screens/Wizard'
 import { Tuner } from './screens/Tuner'
+import { Tone } from './screens/Tone'
 import { Harness } from './screens/Harness'
 
 const SCREENS: Record<Route, ComponentType> = {
   home: Home,
   wizard: Wizard,
   tuner: Tuner,
+  tone: Tone,
   harness: Harness,
 }
 

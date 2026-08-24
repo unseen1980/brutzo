@@ -15,7 +15,8 @@ import { analyzeTimeDomain, rmsToDb, detectHum, type HumResult } from './detecti
  *
  * - Channel auto-selection compares per-channel RMS on chAnalyserL/R and
  *   opens/closes the gates — stereo inputs are never blindly summed.
- * - Nothing connects to ctx.destination: Phase 0 never monitors guitar audio.
+ * - Analysis never connects directly to ctx.destination. Phase 1 monitoring may
+ *   attach the selected analyser output to the opt-in ToneMonitor worklet.
  * - All scratch buffers are allocated once and reused; readFrame() performs
  *   no per-sample allocations.
  */
@@ -125,6 +126,20 @@ export class AudioGraph {
 
   get selectedChannel(): 0 | 1 {
     return this.selected
+  }
+
+
+  /** Connects the already channel-selected signal to a downstream feature. */
+  connectSelectedOutput(node: AudioNode): void {
+    this.analyser.connect(node)
+  }
+
+  disconnectSelectedOutput(node: AudioNode): void {
+    try {
+      this.analyser.disconnect(node)
+    } catch {
+      // Already disconnected.
+    }
   }
 
   /** Connects a source (MediaStreamAudioSourceNode or AudioBufferSourceNode). */

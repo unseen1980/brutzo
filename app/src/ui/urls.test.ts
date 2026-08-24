@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { harnessClipsUrl, marketingSiteUrl } from './urls'
+import { harnessClipsUrl, marketingSiteUrl, toneResourceUrls } from './urls'
 
 describe('deployment URLs', () => {
   it.each([
@@ -16,5 +16,20 @@ describe('deployment URLs', () => {
     ['http://localhost:5173/app/', 'http://localhost:5173/'],
   ])('resolves the marketing site from app base %s', (appBase, expected) => {
     expect(marketingSiteUrl(appBase)).toBe(expected)
+  })
+
+  it.each([
+    [
+      'https://unseen1980.github.io/brutzo/app/',
+      'https://unseen1980.github.io/brutzo/app/audio/tone-processor.js',
+      'https://unseen1980.github.io/brutzo/app/audio/brutzo_tone_core.wasm',
+    ],
+    [
+      'https://brutzo.com/app/',
+      'https://brutzo.com/app/audio/tone-processor.js',
+      'https://brutzo.com/app/audio/brutzo_tone_core.wasm',
+    ],
+  ])('resolves tone resources within app base %s', (appBase, processor, wasm) => {
+    expect(toneResourceUrls(appBase)).toEqual({ processor, wasm })
   })
 })

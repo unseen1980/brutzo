@@ -4,10 +4,10 @@ Browser-based guitar app (blues/rock/pop, electric guitar only). The signature f
 "the Ghost": score-aware real-time assistance that corrects pitch and completes bends while
 the user plays. Full context lives in PLAN.md (local, gitignored — always read it first).
 
-## Current phase: 0 — Foundation
-Only Phase 0 scope is in play: setup wizard, tuner, meters, timing calibration, the
-reference-clip regression harness, and wiring the landing page waitlist. Do NOT start
-Phase 1+ work (amp sim, correction engine, accounts, Supabase) unless explicitly asked.
+## Current phase: 1 — Tone
+Phase 0 is complete. Phase 1 scope is amp/cab/FX, latency measurement, and recording.
+The Ghost/correction engine remains Phase 3; accounts/Supabase remain Phase 2. Do not pull
+those later-phase systems forward unless explicitly asked.
 
 ## Stack decisions (already made — don't relitigate)
 - App: Vite + React + TypeScript under /app, built to static files. No backend in Phase 0.

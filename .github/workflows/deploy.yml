@@ -26,6 +26,18 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          components: rustfmt
+
+      - name: Format and test Rust tone core
+        run: |
+          npm run dsp:format
+          npm run dsp:test
+        working-directory: app
+
       - name: Install app dependencies
         run: npm ci
         working-directory: app

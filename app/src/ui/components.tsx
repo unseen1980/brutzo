@@ -21,6 +21,7 @@ export function PageShell({
     ['home', 'Home'],
     ['wizard', 'Setup wizard'],
     ['tuner', 'Tuner'],
+    ['tone', 'Tone lab'],
     ['harness', 'Harness'],
   ]
 

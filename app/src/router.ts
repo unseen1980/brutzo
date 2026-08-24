@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
-export type Route = 'home' | 'wizard' | 'tuner' | 'harness'
-const ROUTES: Route[] = ['home', 'wizard', 'tuner', 'harness']
+export type Route = 'home' | 'wizard' | 'tuner' | 'tone' | 'harness'
+const ROUTES: Route[] = ['home', 'wizard', 'tuner', 'tone', 'harness']
 
 export function routeFromHash(hash: string): Route {
   const raw = hash.replace(/^#\/?/, '').split(/[/?]/)[0] as Route

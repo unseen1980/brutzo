@@ -22,3 +22,11 @@ for (const url of assetUrls) {
 }
 
 console.log(`Verified ${assetUrls.length} deployment-relative build assets`)
+
+for (const resource of ['audio/tone-processor.js', 'audio/brutzo_tone_core.wasm']) {
+  const resourcePath = path.join(appRoot, 'dist', resource)
+  if (!fs.existsSync(resourcePath) || fs.statSync(resourcePath).size === 0) {
+    throw new Error(`Built tone resource is missing or empty: ${resource}`)
+  }
+}
+console.log('Verified AudioWorklet and tone WASM resources')

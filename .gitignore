@@ -3,6 +3,10 @@ node_modules/
 dist/
 PLAN.md
 
+# Rust build output and generated browser artifact
+app/dsp/**/target/
+app/public/audio/*.wasm
+
 # Local working artifacts — not part of the published repo
 brutzo-claude-code-kit.md
 brutzo-product-and-technical-plan*.md

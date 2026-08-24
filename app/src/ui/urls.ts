@@ -10,6 +10,18 @@ export function marketingSiteUrl(appBase: string): string {
   return new URL('../', appBase).href
 }
 
+export function toneResourceUrls(appBase: string): { processor: string; wasm: string } {
+  return {
+    processor: new URL('audio/tone-processor.js', appBase).href,
+    wasm: new URL('audio/brutzo_tone_core.wasm', appBase).href,
+  }
+}
+
+export function currentToneResourceUrls(): { processor: string; wasm: string } {
+  return toneResourceUrls(document.baseURI)
+}
+
+
 export function currentHarnessClipsUrl(): string {
   return harnessClipsUrl(document.baseURI)
 }

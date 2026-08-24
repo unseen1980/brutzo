@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/verify-build.mjs",
+    "dev": "node scripts/build-dsp.mjs && vite",
+    "build": "node scripts/build-dsp.mjs && tsc -b && vite build && node scripts/verify-build.mjs",
+    "dsp:format": "cargo fmt --manifest-path dsp/tone-core/Cargo.toml -- --check",
+    "dsp:test": "cargo test --manifest-path dsp/tone-core/Cargo.toml",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
