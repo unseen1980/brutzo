@@ -29,7 +29,7 @@ export function PageShell({
     <div className="shell">
       <header className="shell-header">
         <a className="shell-logo" href="#/home">
-          <img className="amp" src={currentLogoPreviewUrl()} alt="" />
+          <img src={currentLogoPreviewUrl()} alt="" />
           BRUTZO
         </a>
         <nav className="shell-nav">
