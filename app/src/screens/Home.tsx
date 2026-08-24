@@ -64,9 +64,9 @@ export function Home() {
         </div>
         <div className="status-row">
           <span className="status-label">
-            <span className="dot warn" />Tone engine
+            <span className="dot ok" />Tone engine
           </span>
-          <span className="status-value">Phase 1 in progress · Rust→WASM AudioWorklet · clean/crunch/lead</span>
+          <span className="status-value">amp/cab · gate/slap/ambience · latency · local WAV takes</span>
         </div>
         <div className="status-row">
           <span className="status-label">

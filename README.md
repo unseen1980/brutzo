@@ -5,7 +5,7 @@
 Brutzo is a browser-based guitar app for blues/rock/pop beginners. Its real-time
 assist — *the Ghost* — corrects your pitch and finishes your bends while you play.
 
-## What's in this repo (Phase 1 — Tone in progress)
+## What's in this repo (Phase 1 — Tone implemented; hardware exit gate pending)
 
 - `index.html` — landing page (exported from Claude Design; standalone, loads React + fonts
   from CDN). The waitlist input POSTs to a Formspree endpoint.
@@ -13,12 +13,14 @@ assist — *the Ghost* — corrects your pitch and finishes your bends while you
 - `app/` — the Brutzo app: Vite + React + TypeScript, served at `/app/`
   - `#/wizard` — setup wizard: input pick with hot-plug, live level meter with target zone,
     clipping + 50/60 Hz hum detection, `getSettings()` processing verification, 8-strum
-    timing calibration, round-trip estimate, profile persisted to IndexedDB
+    timing calibration, browser output-path estimate, profile persisted to IndexedDB
   - `#/tuner` — YIN pitch detection, big note display, cents needle, six-string indicators,
     accurate down to low E (82.41 Hz)
   - `#/harness` — the reference-clip regression harness (see below)
   - `#/tone` — opt-in live monitoring through an allocation-free Rust→WASM AudioWorklet:
-    safety HPF, amp drive, tone/cab roll-off, clean/crunch/lead presets, and browser latency estimate
+    input trim, safety HPF, gate, amp drive, cabinet FIR convolution, compression,
+    clean/crunch/lead presets, slap delay, ambience, hard mute, honest browser latency estimate,
+    and processed-output WAV takes stored locally with IndexedDB metadata + OPFS audio
 
 - `harness/` — clip library, expected-pitch manifest, and the clip generator script
 - `.github/workflows/deploy.yml` — builds the app, runs the tests, deploys to Pages
@@ -59,7 +61,9 @@ same node graph — that is the harness requirement. The harness runs in two pla
 
 - **In the browser** — `app` `#/harness` loads `/harness/clips/manifest.json`, plays each
   clip through the same graph as the microphone (buffer source → channel auto-select →
-  analysers → YIN), and reports pass/fail with cents error per clip.
+  analysers → YIN), and reports pass/fail with cents error per clip. Its separate Phase 1
+  full-path check runs a fixture through the WASM amp/cabinet, FX/headroom, mute, recorder,
+  and WAV encoder and reports preset contrast, peak, mute leakage, and dropped frames.
 - **Headless, on every push** — `cd app && npm test` decodes the actual WAV files, steps
   through them at the same 40 ms cadence, runs the same `YinPitchDetector`, and asserts
   the Phase 0 exit criterion (≥ 95% note accuracy) plus per-clip tolerances. The per-clip

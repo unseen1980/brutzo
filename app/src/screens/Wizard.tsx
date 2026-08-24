@@ -638,7 +638,7 @@ function SummaryStep({ data, onRestart }: { data: WizardData; onRestart: () => v
       sampleRate: data.sampleRate,
       baseLatencyMs: latency?.baseMs ?? null,
       outputLatencyMs: latency?.outputMs ?? null,
-      roundTripMs: latency?.roundTripMs ?? null,
+      roundTripMs: latency?.browserEstimateMs ?? null,
       processingVerified: data.check?.verified ?? false,
       processingProblems: data.check?.problems ?? [],
       humHz: data.humHz,
@@ -703,13 +703,13 @@ function SummaryStep({ data, onRestart }: { data: WizardData; onRestart: () => v
       />
 
       <StatusRow
-        label="Measured round-trip estimate"
+        label="Browser output-path estimate"
         value={
-          latency?.roundTripMs != null
-            ? `${latency.roundTripMs.toFixed(1)} ms (output ${latency.outputMs?.toFixed(1)} + base ${latency.baseMs?.toFixed(1)})`
+          latency?.browserEstimateMs != null
+            ? `${latency.browserEstimateMs.toFixed(1)} ms (output ${latency.outputMs?.toFixed(1) ?? '—'} + base ${latency.baseMs?.toFixed(1) ?? '—'})`
             : 'measuring…'
         }
-        state={latency?.roundTripMs != null && latency.roundTripMs > 30 ? 'warn' : 'ok'}
+        state={latency?.browserEstimateMs == null ? 'off' : latency.browserEstimateMs > 30 ? 'warn' : 'ok'}
       />
       <StatusRow
         label="Timing offset (median strum)"
@@ -727,9 +727,9 @@ function SummaryStep({ data, onRestart }: { data: WizardData; onRestart: () => v
           live monitoring. Plug in wired headphones or speakers.
         </div>
       )}
-      {latency?.roundTripMs != null && latency.roundTripMs > 30 && !latency.bluetoothSuspected && (
+      {latency?.browserEstimateMs != null && latency.browserEstimateMs > 30 && !latency.bluetoothSuspected && (
         <div className="warn-box">
-          Round-trip above 30 ms. Close other audio apps, or try a different output device. A small
+          Browser estimate above 30 ms. Close other audio apps, or try a different output device. A small
           USB audio interface is the reliable fix.
         </div>
       )}
@@ -758,4 +758,3 @@ function SummaryStep({ data, onRestart }: { data: WizardData; onRestart: () => v
     </Card>
   )
 }
-

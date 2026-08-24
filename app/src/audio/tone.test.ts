@@ -8,9 +8,11 @@ describe('tone parameters', () => {
   })
 
   it('clamps untrusted UI values to the DSP ABI', () => {
-    expect(normalizeToneParams({ drive: 99, tone: -1, level: Number.NaN })).toEqual({
+    expect(normalizeToneParams({ inputTrimDb: 99, drive: 99, tone: -1, cabinet: 2, level: Number.NaN })).toEqual({
+      inputTrimDb: 12,
       drive: 12,
       tone: 0,
+      cabinet: 1,
       level: 0,
     })
   })
@@ -19,5 +21,6 @@ describe('tone parameters', () => {
     expect(Object.keys(TONE_PRESETS)).toEqual(['clean', 'crunch', 'lead'])
     expect(TONE_PRESETS.clean.drive).toBeLessThan(TONE_PRESETS.crunch.drive)
     expect(TONE_PRESETS.crunch.drive).toBeLessThan(TONE_PRESETS.lead.drive)
+    expect(new Set(Object.values(TONE_PRESETS).map((value) => value.cabinet)).size).toBe(3)
   })
 })

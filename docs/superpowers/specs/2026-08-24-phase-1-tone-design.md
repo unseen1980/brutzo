@@ -37,7 +37,7 @@ live input or harness WAV
   -> channel selection
   -> ToneMonitor
      -> Rust/WASM: input trim -> 70 Hz HPF -> gate -> amp drive
-                  -> post tone/EQ -> cabinet voicing -> compressor -> output trim
+                  -> post tone/EQ -> cabinet FIR convolution -> compressor -> output trim
      -> native Web Audio: dry/slap mix -> dry/ambience mix
      -> master safety gain
         -> destination
@@ -46,7 +46,7 @@ live input or harness WAV
 
 The Rust processor remains allocation-free per sample. Parameter updates are normalized on the UI side and clamped again in Rust. Output mute uses a short gain ramp to avoid clicks. Delay and ambience use bounded native nodes and explicit wet gains; bypass means a wet gain of zero, not graph reconstruction.
 
-The initial cabinet is an original deterministic Brutzo cabinet voicing, not a third-party measured IR. The implementation retains a stable cabinet control boundary so a measured, licensed IR can replace it later without changing the screen or recorder.
+The initial cabinet is one original deterministic short FIR convolution in the WASM core, not a third-party measured IR. The implementation retains a stable cabinet control boundary so a measured, licensed IR can replace it later without changing the screen or recorder.
 
 ## Parameters and presets
 
@@ -84,7 +84,7 @@ Each take stores:
 - current latency estimate;
 - calibrated device label.
 
-Metadata and WAV blobs use a dedicated IndexedDB `takes` store. The UI lists newest first and supports local playback, WAV download, and deletion. Recordings never leave the device.
+Metadata uses a dedicated IndexedDB `takes` store and WAV blobs use OPFS under `takes/`. The UI lists newest first and supports local playback, WAV download, and deletion. Recordings never leave the device.
 
 ## UI and failure handling
 
@@ -107,4 +107,3 @@ Before starting, the screen checks secure-context and media-device availability.
 - auth/accounts;
 - lessons, scoring, Ghost correction, or Phase 2+ data models;
 - claiming the 30 ms reference-rig exit criterion without a physical loopback/hardware run.
-

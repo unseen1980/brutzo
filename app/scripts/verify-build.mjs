@@ -29,4 +29,10 @@ for (const resource of ['audio/tone-processor.js', 'audio/brutzo_tone_core.wasm'
     throw new Error(`Built tone resource is missing or empty: ${resource}`)
   }
 }
-console.log('Verified AudioWorklet and tone WASM resources')
+const processorSource = fs.readFileSync(path.join(appRoot, 'dist', 'audio', 'tone-processor.js'), 'utf8')
+for (const processor of ['brutzo-tone', 'brutzo-recorder']) {
+  if (!processorSource.includes(`registerProcessor('${processor}'`)) {
+    throw new Error(`Built AudioWorklet is missing processor: ${processor}`)
+  }
+}
+console.log('Verified tone/recorder AudioWorklets and tone WASM resources')

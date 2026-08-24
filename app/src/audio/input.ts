@@ -42,6 +42,7 @@ export type InputEvent =
 export class InputController {
   private stream: MediaStream | null = null
   private track: MediaStreamTrack | null = null
+  private openGeneration = 0
   private onTrackEnded: (() => void) | null = null
   private boundOnDeviceChange: (() => void) | null = null
 
@@ -65,7 +66,8 @@ export class InputController {
    * system default (the laptop-mic demo mode).
    */
   async open(deviceId: string | null): Promise<OpenInputResult> {
-    await this.close()
+    const generation = ++this.openGeneration
+    this.closeCurrent()
     const audio: MediaTrackConstraints = {
       echoCancellation: false,
       noiseSuppression: false,
@@ -74,6 +76,12 @@ export class InputController {
     if (deviceId) audio.deviceId = { exact: deviceId }
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false })
+    if (generation !== this.openGeneration) {
+      stream.getTracks().forEach((candidate) => candidate.stop())
+      const error = new Error('Audio input opening was cancelled.')
+      error.name = 'AbortError'
+      throw error
+    }
     const track = stream.getAudioTracks()[0]
     if (!track) {
       stream.getTracks().forEach((t) => t.stop())
@@ -124,6 +132,11 @@ export class InputController {
   }
 
   async close(): Promise<void> {
+    this.openGeneration++
+    this.closeCurrent()
+  }
+
+  private closeCurrent(): void {
     this.stopListening()
     if (this.track) {
       this.track.onended = null

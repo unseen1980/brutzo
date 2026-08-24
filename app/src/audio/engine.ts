@@ -6,8 +6,8 @@ export interface LatencyInfo {
   baseMs: number | null
   /** AudioContext.outputLatency in ms — grows large on Bluetooth outputs. */
   outputMs: number | null
-  /** base + output, the honest "measured round-trip estimate". */
-  roundTripMs: number | null
+  /** Browser-reported output-path estimate. This is not a measured hardware round trip. */
+  browserEstimateMs: number | null
   /** True when the numbers or device labels look like a Bluetooth output. */
   bluetoothSuspected: boolean
   /** Output device labels seen (for the wizard summary). */
@@ -40,7 +40,7 @@ export class AudioEngine {
   /** Creates/resumes the context. Must be called from a user gesture. */
   ensureContext(): AudioContext {
     if (!this.ctx) {
-      this.ctx = new AudioContext({ latencyHint: 'interactive' })
+      this.ctx = new AudioContext({ latencyHint: 0 })
       this.graph = new AudioGraph(this.ctx)
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume()
@@ -83,7 +83,9 @@ export class AudioEngine {
     const baseMs = this.ctx ? this.ctx.baseLatency * 1000 : null
     // outputLatency can be 0 until audio has actually played; report what we see.
     const outputMs = this.ctx && this.ctx.outputLatency > 0 ? this.ctx.outputLatency * 1000 : null
-    const roundTripMs = baseMs !== null && outputMs !== null ? baseMs + outputMs : null
+    // A base-only number is incomplete and must not be graded against the
+    // physical 30 ms target as if it covered the full browser output path.
+    const browserEstimateMs = baseMs !== null && outputMs !== null ? baseMs + outputMs : null
 
     let outputLabels: string[] = []
     try {
@@ -99,7 +101,7 @@ export class AudioEngine {
       (outputMs !== null && outputMs > BLUETOOTH_LATENCY_MS) ||
       outputLabels.some((l) => BLUETOOTH_LABEL_RE.test(l))
 
-    return { baseMs, outputMs, roundTripMs, bluetoothSuspected, outputLabels }
+    return { baseMs, outputMs, browserEstimateMs, bluetoothSuspected, outputLabels }
   }
 }
 

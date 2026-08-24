@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getEngine } from '../audio/engine'
+import { DEFAULT_FX_PARAMS } from '../audio/fx'
 import { centsBetween } from '../audio/notes'
+import { encodeMonoWav } from '../audio/recorder'
 import { median } from '../audio/stats'
+import { ToneMonitor, TONE_PRESETS, type RecordingResult, type ToneParams } from '../audio/tone'
 import { Card, Dot } from '../ui/components'
 import { COLORS } from '../ui/tokens'
-import { currentHarnessClipsUrl } from '../ui/urls'
+import { currentHarnessClipsUrl, currentToneResourceUrls } from '../ui/urls'
 
 /** Served beside /app/ in production; the dev server maps it to repo root. */
 const CLIPS_URL = currentHarnessClipsUrl()
@@ -45,6 +48,11 @@ export function Harness() {
   const [results, setResults] = useState<ClipResult[]>([])
   const [running, setRunning] = useState(false)
   const [sampleRate, setSampleRate] = useState<number | null>(null)
+  const [toneHarness, setToneHarness] = useState<{ running: boolean; message: string; pass: boolean | null }>({
+    running: false,
+    message: 'Not run yet.',
+    pass: null,
+  })
 
   useEffect(() => {
     let alive = true
@@ -153,6 +161,79 @@ export function Harness() {
       }
     }
     setRunning(false)
+  }
+
+  const runTonePath = async () => {
+    if (!manifest || toneHarness.running) return
+    setToneHarness({ running: true, message: 'Running the complete tone/FX/recorder path…', pass: null })
+    const engine = getEngine()
+    const ctx = engine.ensureContext()
+    const graph = engine.audioGraph!
+    const monitor = new ToneMonitor(ctx)
+    let node: AudioWorkletNode | null = null
+    try {
+      const clip = manifest.clips[0]
+      const response = await fetch(`${CLIPS_URL}/${clip.file}`)
+      if (!response.ok) throw new Error(`fixture fetch failed: HTTP ${response.status}`)
+      const buffer = await engine.decodeAudioFile(await response.arrayBuffer())
+      const resources = currentToneResourceUrls()
+      node = await monitor.initialize(resources.processor, resources.wasm)
+      graph.connectSelectedOutput(node)
+      monitor.connectOutput()
+
+      const capture = async (tone: ToneParams, muted: boolean): Promise<RecordingResult> => {
+        monitor.setParams(tone)
+        monitor.setFxParams({ ...DEFAULT_FX_PARAMS, muted })
+        await wait(100)
+        const source = ctx.createBufferSource()
+        source.buffer = buffer
+        graph.connectSource(source)
+        try {
+          monitor.startRecording()
+          await new Promise<void>((resolve) => {
+            source.onended = () => resolve()
+            source.start()
+          })
+          await wait(100)
+          return await monitor.stopRecording()
+        } finally {
+          graph.disconnectSource(source)
+        }
+      }
+
+      const clean = await capture(TONE_PRESETS.clean, false)
+      const lead = await capture(TONE_PRESETS.lead, false)
+      const muted = await capture(TONE_PRESETS.clean, true)
+      const cleanLevel = meanAbsolute(clean)
+      const leadLevel = meanAbsolute(lead)
+      const mutedLevel = meanAbsolute(muted)
+      const peak = Math.max(maxAbsolute(clean), maxAbsolute(lead))
+      const wav = encodeMonoWav(clean.chunks, clean.sampleRate)
+      const wavHeader = new TextDecoder().decode(new Uint8Array(wav, 0, 4))
+      const finite = [...clean.chunks, ...lead.chunks, ...muted.chunks].every((chunk) =>
+        chunk.every((sample) => Number.isFinite(sample)),
+      )
+      const pass =
+        clean.frames > 0 &&
+        lead.frames > 0 &&
+        clean.droppedFrames + lead.droppedFrames + muted.droppedFrames === 0 &&
+        finite &&
+        peak <= 1 &&
+        wavHeader === 'RIFF' &&
+        cleanLevel > 0 &&
+        Math.abs(leadLevel - cleanLevel) > cleanLevel * 0.03 &&
+        mutedLevel < cleanLevel * 0.02
+      setToneHarness({
+        running: false,
+        pass,
+        message: `${pass ? 'PASS' : 'FAIL'} · clean ${cleanLevel.toFixed(4)} mean · lead ${leadLevel.toFixed(4)} · peak ${peak.toFixed(4)} · muted ${mutedLevel.toFixed(6)} · dropped ${clean.droppedFrames + lead.droppedFrames + muted.droppedFrames} · WAV ${wav.byteLength} bytes`,
+      })
+    } catch (error) {
+      setToneHarness({ running: false, pass: false, message: error instanceof Error ? error.message : String(error) })
+    } finally {
+      if (node) graph.disconnectSelectedOutput(node)
+      monitor.dispose()
+    }
   }
 
   const passed = results.filter((r) => r.status === 'pass').length
@@ -266,6 +347,19 @@ export function Harness() {
         )}
       </Card>
 
+      <Card
+        title="Phase 1 full-path harness"
+        sub="Feeds the first reference WAV through channel selection, Rust/WASM amp and cabinet FIR, native FX/headroom, final-output recorder, and WAV encoder."
+      >
+        <div className="warn-box">This test briefly plays processed audio. Use wired headphones and lower the output first.</div>
+        <button className="btn" onClick={() => void runTonePath()} disabled={!manifest || toneHarness.running}>
+          {toneHarness.running ? 'Running full path…' : 'Run Phase 1 full path'}
+        </button>
+        <div className={toneHarness.pass === null ? 'warn-box' : toneHarness.pass ? 'ok-box' : 'err-box'} role="status">
+          {toneHarness.message}
+        </div>
+      </Card>
+
       <Card title="Adding real clips (your part)">
         <p style={{ color: 'var(--b-color-textMid)', margin: 0 }}>
           Record 3–5 s mono WAVs through the Katana over USB — chromatics, open strings, good /
@@ -278,4 +372,26 @@ export function Harness() {
       </Card>
     </>
   )
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+function meanAbsolute(result: RecordingResult): number {
+  let sum = 0
+  let frames = 0
+  for (const chunk of result.chunks) {
+    for (let i = 0; i < chunk.length; i++) sum += Math.abs(chunk[i])
+    frames += chunk.length
+  }
+  return frames > 0 ? sum / frames : 0
+}
+
+function maxAbsolute(result: RecordingResult): number {
+  let peak = 0
+  for (const chunk of result.chunks) {
+    for (let i = 0; i < chunk.length; i++) peak = Math.max(peak, Math.abs(chunk[i]))
+  }
+  return peak
 }

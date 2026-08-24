@@ -2,19 +2,39 @@
 
 use std::cell::UnsafeCell;
 
+const CAB_TAPS: usize = 16;
+// Original short cabinet impulses. `cabinet` crossfades open -> dark without
+// allocating or rebuilding state on the AudioWorklet render thread.
+const CAB_OPEN: [f32; CAB_TAPS] = [
+    0.66, 0.31, -0.16, 0.10, -0.07, 0.05, -0.035, 0.025, -0.018, 0.013, -0.009, 0.006, -0.004,
+    0.003, -0.002, 0.001,
+];
+const CAB_DARK: [f32; CAB_TAPS] = [
+    0.16, 0.19, 0.18, 0.15, 0.12, 0.09, 0.065, 0.045, 0.030, 0.020, 0.013, 0.008, 0.005, 0.003,
+    0.002, 0.001,
+];
+
 #[derive(Clone, Copy, Debug)]
 pub struct ToneParams {
+    pub input_trim_db: f32,
     pub drive: f32,
     pub tone: f32,
+    pub cabinet: f32,
     pub level: f32,
+    pub gate_threshold_db: f32,
+    pub gate_enabled: bool,
 }
 
 impl Default for ToneParams {
     fn default() -> Self {
         Self {
+            input_trim_db: 0.0,
             drive: 3.0,
             tone: 0.65,
+            cabinet: 0.5,
             level: 0.7,
+            gate_threshold_db: -54.0,
+            gate_enabled: true,
         }
     }
 }
@@ -25,11 +45,15 @@ pub struct ToneProcessor {
     params: ToneParams,
     hpf_alpha: f32,
     tone_alpha: f32,
-    cab_alpha: f32,
+    input_gain: f32,
+    gate_threshold: f32,
     hpf_previous_input: f32,
     hpf_previous_output: f32,
+    gate_envelope: f32,
+    gate_gain: f32,
     tone_state: f32,
-    cab_state: f32,
+    cab_history: [f32; CAB_TAPS],
+    cab_index: usize,
 }
 
 impl ToneProcessor {
@@ -41,28 +65,41 @@ impl ToneProcessor {
             params,
             hpf_alpha: high_pass_alpha(70.0, sample_rate),
             tone_alpha: one_pole_alpha(tone_cutoff(params.tone), sample_rate),
-            cab_alpha: one_pole_alpha(5_200.0, sample_rate),
+            input_gain: db_to_gain(params.input_trim_db),
+            gate_threshold: db_to_gain(params.gate_threshold_db),
             hpf_previous_input: 0.0,
             hpf_previous_output: 0.0,
+            gate_envelope: 0.0,
+            gate_gain: 1.0,
             tone_state: 0.0,
-            cab_state: 0.0,
+            cab_history: [0.0; CAB_TAPS],
+            cab_index: 0,
         }
     }
 
     pub fn set_params(&mut self, params: ToneParams) {
         self.params = ToneParams {
-            drive: params.drive.clamp(1.0, 12.0),
-            tone: params.tone.clamp(0.0, 1.0),
-            level: params.level.clamp(0.0, 1.0),
+            input_trim_db: finite_or(params.input_trim_db, 0.0).clamp(-18.0, 12.0),
+            drive: finite_or(params.drive, 1.0).clamp(1.0, 12.0),
+            tone: finite_or(params.tone, 0.5).clamp(0.0, 1.0),
+            cabinet: finite_or(params.cabinet, 0.5).clamp(0.0, 1.0),
+            level: finite_or(params.level, 0.0).clamp(0.0, 1.0),
+            gate_threshold_db: finite_or(params.gate_threshold_db, -72.0).clamp(-72.0, -24.0),
+            gate_enabled: params.gate_enabled,
         };
+        self.input_gain = db_to_gain(self.params.input_trim_db);
+        self.gate_threshold = db_to_gain(self.params.gate_threshold_db);
         self.tone_alpha = one_pole_alpha(tone_cutoff(self.params.tone), self.sample_rate);
     }
 
     pub fn reset(&mut self) {
         self.hpf_previous_input = 0.0;
         self.hpf_previous_output = 0.0;
+        self.gate_envelope = 0.0;
+        self.gate_gain = if self.params.gate_enabled { 0.0 } else { 1.0 };
         self.tone_state = 0.0;
-        self.cab_state = 0.0;
+        self.cab_history = [0.0; CAB_TAPS];
+        self.cab_index = 0;
     }
 
     #[inline]
@@ -72,28 +109,74 @@ impl ToneProcessor {
         }
 
         // 70 Hz one-pole high-pass removes DC and subsonic handling noise.
+        let trimmed = input * self.input_gain;
         let high_passed =
-            self.hpf_alpha * (self.hpf_previous_output + input - self.hpf_previous_input);
-        self.hpf_previous_input = input;
+            self.hpf_alpha * (self.hpf_previous_output + trimmed - self.hpf_previous_input);
+        self.hpf_previous_input = trimmed;
         self.hpf_previous_output = high_passed;
+
+        let magnitude = high_passed.abs();
+        let envelope_alpha = if magnitude > self.gate_envelope {
+            0.08
+        } else {
+            0.002
+        };
+        self.gate_envelope += envelope_alpha * (magnitude - self.gate_envelope);
+        let gate_target = if !self.params.gate_enabled || self.gate_envelope >= self.gate_threshold
+        {
+            1.0
+        } else {
+            0.0
+        };
+        let gate_alpha = if gate_target > self.gate_gain {
+            0.12
+        } else {
+            0.006
+        };
+        self.gate_gain += gate_alpha * (gate_target - self.gate_gain);
+        let gated = high_passed * self.gate_gain;
 
         // Normalized tanh keeps perceived level useful as drive rises.
         let drive = self.params.drive;
-        let driven = (high_passed * drive).tanh() / drive.tanh();
+        let driven = (gated * drive).tanh() / drive.tanh();
 
         self.tone_state += self.tone_alpha * (driven - self.tone_state);
 
-        // A fixed 5.2 kHz stage is the initial cab roll-off. A measured IR
-        // replaces this stage later in Phase 1 without changing the ABI.
-        self.cab_state += self.cab_alpha * (self.tone_state - self.cab_state);
+        // Short original cabinet IR, convolved directly with a fixed ring
+        // buffer. The FIR is deterministic and allocation-free per sample.
+        self.cab_history[self.cab_index] = self.tone_state;
+        let mut cabinet = 0.0;
+        let mut history_index = self.cab_index;
+        for tap in 0..CAB_TAPS {
+            let coefficient = CAB_OPEN[tap] + (CAB_DARK[tap] - CAB_OPEN[tap]) * self.params.cabinet;
+            cabinet += self.cab_history[history_index] * coefficient;
+            history_index = if history_index == 0 {
+                CAB_TAPS - 1
+            } else {
+                history_index - 1
+            };
+        }
+        self.cab_index = (self.cab_index + 1) % CAB_TAPS;
 
-        (self.cab_state * self.params.level).clamp(-1.0, 1.0)
+        // Gentle output dynamics controls transients without a brick-wall jump.
+        let compressed = cabinet / (1.0 + 0.18 * cabinet.abs());
+        (compressed * self.params.level).clamp(-1.0, 1.0)
     }
 }
 
 #[inline]
 fn tone_cutoff(tone: f32) -> f32 {
     1_200.0 + tone * 5_800.0
+}
+
+#[inline]
+fn finite_or(value: f32, fallback: f32) -> f32 {
+    if value.is_finite() { value } else { fallback }
+}
+
+#[inline]
+fn db_to_gain(db: f32) -> f32 {
+    10.0_f32.powf(db / 20.0)
 }
 
 #[inline]
@@ -123,10 +206,26 @@ pub extern "C" fn tone_init(sample_rate: f32) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn tone_set_params(drive: f32, tone: f32, level: f32) {
+pub extern "C" fn tone_set_params(
+    input_trim_db: f32,
+    drive: f32,
+    tone: f32,
+    cabinet: f32,
+    level: f32,
+    gate_threshold_db: f32,
+    gate_enabled: f32,
+) {
     // SAFETY: see `tone_init`; no other thread can access this WASM instance.
     if let Some(processor) = unsafe { &mut *WORKLET_STATE.0.get() } {
-        processor.set_params(ToneParams { drive, tone, level });
+        processor.set_params(ToneParams {
+            input_trim_db,
+            drive,
+            tone,
+            cabinet,
+            level,
+            gate_threshold_db,
+            gate_enabled: gate_enabled >= 0.5,
+        });
     }
 }
 
