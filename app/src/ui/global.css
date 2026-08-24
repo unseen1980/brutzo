@@ -99,13 +99,11 @@ code,
   text-decoration: none;
 }
 .shell-logo .amp {
-  display: inline-block;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: radial-gradient(circle at 50% 30%, var(--b-color-bg3), #0e0e11);
-  border: 1px solid var(--b-color-line);
-  box-shadow: 0 0 14px rgba(255, 176, 32, 0.35);
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(255, 176, 32, 0.22));
 }
 
 .shell-nav {

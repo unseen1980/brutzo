@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { harnessClipsUrl, marketingSiteUrl, toneResourceUrls } from './urls'
+import { harnessClipsUrl, logoPreviewUrl, marketingSiteUrl, toneResourceUrls } from './urls'
 
 describe('deployment URLs', () => {
   it.each([
@@ -31,5 +31,12 @@ describe('deployment URLs', () => {
     ],
   ])('resolves tone resources within app base %s', (appBase, processor, wasm) => {
     expect(toneResourceUrls(appBase)).toEqual({ processor, wasm })
+  })
+
+  it.each([
+    ['https://unseen1980.github.io/brutzo/app/', 'https://unseen1980.github.io/brutzo/logo-mark.svg'],
+    ['https://brutzo.com/app/', 'https://brutzo.com/logo-mark.svg'],
+  ])('resolves the approved logo mark from app base %s', (appBase, expected) => {
+    expect(logoPreviewUrl(appBase)).toBe(expected)
   })
 })

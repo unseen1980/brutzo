@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import type { Route } from '../router'
 import { COLORS } from './tokens'
-import { currentMarketingSiteUrl } from './urls'
+import { currentLogoPreviewUrl, currentMarketingSiteUrl } from './urls'
 
 export function PageShell({
   route,
@@ -29,7 +29,7 @@ export function PageShell({
     <div className="shell">
       <header className="shell-header">
         <a className="shell-logo" href="#/home">
-          <span className="amp" />
+          <img className="amp" src={currentLogoPreviewUrl()} alt="" />
           BRUTZO
         </a>
         <nav className="shell-nav">

@@ -10,6 +10,10 @@ export function marketingSiteUrl(appBase: string): string {
   return new URL('../', appBase).href
 }
 
+export function logoPreviewUrl(appBase: string): string {
+  return new URL('../logo-mark.svg', appBase).href
+}
+
 export function toneResourceUrls(appBase: string): { processor: string; wasm: string } {
   return {
     processor: new URL('audio/tone-processor.js', appBase).href,
@@ -28,4 +32,8 @@ export function currentHarnessClipsUrl(): string {
 
 export function currentMarketingSiteUrl(): string {
   return marketingSiteUrl(document.baseURI)
+}
+
+export function currentLogoPreviewUrl(): string {
+  return logoPreviewUrl(document.baseURI)
 }
